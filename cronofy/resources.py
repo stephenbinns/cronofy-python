@@ -185,13 +185,55 @@ class ListableAPIResource(APIResource):
                                 headers={'content-type': 'application/json', 'authorization': 'Bearer %s' % access_token})
 
         if response.status_code == requests.codes.ok:
-            items = response.json()["%ss" % cls.class_name().lower()]
+            response_json = response.json()
+            items = response_json["%ss" % cls.class_name().lower()]
+            pages = response_json["pages"]
 
             #TODO: add the following of pagination?
-            return convert_to_cronofy_object(items, cls.class_name().lower())
+            #return convert_to_cronofy_object(items, cls.class_name().lower())
+            result = CronofyResultSet(convert_to_cronofy_object(items, cls.class_name().lower()))
+            
+            if "next_page" in pages and pages["next_page"]:
+                result.next_page_url = pages["next_page"]
+                result.access_token = access_token
+                result.object_class = cls.class_name()
+
+            return result
         else:
             #TODO: wrap HTTP errors and throw our own
             raise CronofyError("Something is wrong", response.text, response.status_code)
+
+
+class CronofyResultSet(list):
+    next_page_url = None
+    access_token = None
+    object_class = None
+
+    def next_page(self):
+        if not next_page_url:
+            return None
+
+        response = requests.get(self.next_page_url,
+                                headers={'content-type': 'application/json', 'authorization': 'Bearer %s' % self.access_token})
+
+        if response.status_code == requests.codes.ok:
+            response_json = response.json()
+            items = response_json["%ss" % self.object_class.lower()]
+            pages = response_json["pages"]
+
+            result = CronofyResultSet(convert_to_cronofy_object(items, self.object_class.lower()))
+            
+            if "next_page" in pages and pages["next_page"]:
+                result.next_page_url = pages["next_page"]
+                result.access_token = self.access_token
+                result.object_class = self.object_class
+
+            return result
+        else:
+            #TODO: wrap HTTP errors and throw our own
+            raise CronofyError("Something is wrong", response.text, response.status_code)
+
+
 
 # API objects
 class Calendar(ListableAPIResource):
