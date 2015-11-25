@@ -5,8 +5,10 @@ import cronofy
 import requests
 
 
+PYTHON_CLASS_NAME_TO_API_NAME = {'Calendar': 'calendar', 'Event': 'event', 'Token': 'token', 'FreeBusy': 'free_busy'}
+
 def convert_to_cronofy_object(resp, type):
-    types = {'calendar': Calendar, 'event': Event, 'token': Token, 'free_busy': Free_Busy}
+    types = {'calendar': Calendar, 'event': Event, 'token': Token, 'free_busy': FreeBusy}
 
     if isinstance(resp, list):
         return [convert_to_cronofy_object(i,type) for i in resp]
@@ -116,7 +118,16 @@ class APIResource(CronofyObject):
             raise NotImplementedError(
                 'APIResource is an abstract class.  You should perform '
                 'actions on its subclasses')
-        return str(urllib.quote_plus(cls.__name__.lower()))
+        try:
+            return str(urllib.quote_plus(PYTHON_CLASS_NAME_TO_API_NAME[cls.__name__]))
+        except KeyError:
+            raise RuntimeError("We are not expecting a class called cls.__name__. "
+                               "Maybe add it to PYTHON_CLASS_NAME_TO_API_NAME?")
+
+    @classmethod
+    def class_name_for_url(cls):
+        cls_name = cls.class_name()
+        return "%ss" % cls_name.lower()
 
 class Account(APIResource):
 
@@ -181,6 +192,13 @@ class ListableAPIResource(APIResource):
         return "/v1/%ss" % (cls_name,)
 
     @classmethod
+    def class_name_for_url(cls):
+        cls_name = cls.class_name()
+        if cls_name == "free_busy":
+            return "free_busy"
+        return "%ss" % cls_name.lower()
+
+    @classmethod
     def all(cls, access_token, params):
         response = requests.get("%s%s" % (cronofy.api_base, cls.class_url(),),
                                 params=params,
@@ -188,9 +206,8 @@ class ListableAPIResource(APIResource):
 
         if response.status_code == requests.codes.ok:
 
-
             response_json = response.json()
-            items = response_json["%ss" % cls.class_name().lower()]
+            items = response_json[cls.class_name_for_url()]
 
             #TODO: add the following of pagination?
             #return convert_to_cronofy_object(items, cls.class_name().lower())
@@ -247,7 +264,7 @@ class Calendar(ListableAPIResource):
     pass
 
 
-class Free_Busy(ListableAPIResource):
+class FreeBusy(ListableAPIResource):
     pass
 
 class Event(ListableAPIResource):
