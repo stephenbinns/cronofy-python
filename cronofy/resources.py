@@ -6,7 +6,7 @@ import requests
 
 
 def convert_to_cronofy_object(resp, type):
-    types = {'calendar': Calendar, 'event' : Event, 'token': Token}
+    types = {'calendar': Calendar, 'event': Event, 'token': Token, 'free_busy': Free_Busy}
 
     if isinstance(resp, list):
         return [convert_to_cronofy_object(i,type) for i in resp]
@@ -176,6 +176,8 @@ class ListableAPIResource(APIResource):
     @classmethod
     def class_url(cls):
         cls_name = cls.class_name()
+        if cls_name == "free_busy":
+            return "/v1/free_busy"
         return "/v1/%ss" % (cls_name,)
 
     @classmethod
@@ -185,6 +187,8 @@ class ListableAPIResource(APIResource):
                                 headers={'content-type': 'application/json', 'authorization': 'Bearer %s' % access_token})
 
         if response.status_code == requests.codes.ok:
+
+
             response_json = response.json()
             items = response_json["%ss" % cls.class_name().lower()]
 
@@ -242,6 +246,9 @@ class CronofyResultSet(list):
 class Calendar(ListableAPIResource):
     pass
 
+
+class Free_Busy(ListableAPIResource):
+    pass
 
 class Event(ListableAPIResource):
     @classmethod
