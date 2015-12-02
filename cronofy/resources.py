@@ -261,6 +261,9 @@ class CronofyResultSet(list):
 
     def get_all_pages(self, max_pages=20):
 
+        if self.total_pages is None or self.total_pages == 1:
+            return self
+
         next_result = self
         results = []
 
