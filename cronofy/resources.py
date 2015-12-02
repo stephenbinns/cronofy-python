@@ -200,6 +200,7 @@ class ListableAPIResource(APIResource):
 
     @classmethod
     def all(cls, access_token, params):
+
         response = requests.get("%s%s" % (cronofy.api_base, cls.class_url(),),
                                 params=params,
                                 headers={'content-type': 'application/json', 'authorization': 'Bearer %s' % access_token})
@@ -209,8 +210,6 @@ class ListableAPIResource(APIResource):
             response_json = response.json()
             items = response_json[cls.class_name_for_url()]
 
-            #TODO: add the following of pagination?
-            #return convert_to_cronofy_object(items, cls.class_name().lower())
             result = CronofyResultSet(convert_to_cronofy_object(items, cls.class_name().lower()))
             
             if "pages" in response_json:
@@ -220,6 +219,7 @@ class ListableAPIResource(APIResource):
                     result.next_page_url = pages["next_page"]
                     result.access_token = access_token
                     result.object_class = cls.class_name()
+                    result.total_pages = pages['total']
 
             return result
         else:
@@ -231,6 +231,7 @@ class CronofyResultSet(list):
     next_page_url = None
     access_token = None
     object_class = None
+    total_pages = None
 
     def next_page(self):
         if not self.next_page_url:
@@ -257,6 +258,21 @@ class CronofyResultSet(list):
         else:
             #TODO: wrap HTTP errors and throw our own
             raise CronofyError("Something is wrong", response.text, response.status_code)
+
+    def get_all_pages(self, max_pages=20):
+
+        next_result = self
+        results = []
+
+        for i in range(min(self.total_pages - 1, max_pages)):
+
+            next_result = next_result.next_page()
+            if next_result is None:
+                raise Exception
+            results = results + next_result
+
+        self.next_page_url = None
+        return self + results
 
 
 # API objects

@@ -1,5 +1,5 @@
 import json
-from unittest import TestCase
+from unittest import TestCase, main
 from cronofy import Calendar, Event
 import cronofy
 import responses
@@ -27,7 +27,7 @@ DUMMY_CALENDARS = json.loads(
     '"calendar_readonly":false,'
     '"calendar_deleted":false}]}')
 
-DUMMY_EVENTS = json.loads(
+DUMMY_EVENTS_PAGE_1 = json.loads(
                           '{"pages":'
                           '{"current":1,"total":2,"next_page":"https://api.cronofy.com/v1/events/pages/08a07b034306679e"},'
                           ''
@@ -46,6 +46,28 @@ DUMMY_EVENTS = json.loads(
                           '"description":"",'
                           '"start":"2014-09-13T19:00:00Z",'
                           '"end":"2014-09-13T21:00:00Z",'
+                          '"deleted":false,'
+                          '"location":{"description":"Pizzeria"}}]}')
+
+DUMMY_EVENTS_PAGE_2 = json.loads(
+                          '{"pages":'
+                          '{"current":2,"total":2},'
+                          ''
+                          '"events":'
+                          '[{"calendar_id":"cal_U9uuErStTG@EAAAB_IsAsykA2DBTWqQTf-f0kJw",'
+                          '"event_uid":"evt_external_54008b1a4a41730f8d596037",'
+                          '"summary":"Company Retreat 2",'
+                          '"description":"",'
+                          '"start":"2014-09-07",'
+                          '"end":"2014-09-09",'
+                          '"deleted":false},'
+                          ''
+                          '{"calendar_id": "cal_U9uuErStTG@EAAAB_IsAsykA2DBTWqQTf-f0kJw",'
+                          '"event_uid":"evt_external_54008b1a4a31730f8d5c6038",'
+                          '"summary":"Dinner with Laura 2",'
+                          '"description":"",'
+                          '"start":"2014-09-14T19:00:00Z",'
+                          '"end":"2014-09-14T21:00:00Z",'
                           '"deleted":false,'
                           '"location":{"description":"Pizzeria"}}]}')
 
@@ -73,7 +95,7 @@ class ResourceTest(TestCase):
     @responses.activate
     def test_events_all(self):
         responses.add(responses.GET, 'https://api.cronofy.com/v1/events',
-                      body=json.dumps(DUMMY_EVENTS), status=200,
+                      body=json.dumps(DUMMY_EVENTS_PAGE_1), status=200,
                       content_type='application/json')
 
         events = Event.all(access_token="DUMMY")
@@ -81,11 +103,31 @@ class ResourceTest(TestCase):
         self.assertEqual(2, len(events))
 
     @responses.activate
+    def test_events_all_pages(self):
+        responses.add(responses.GET, 'https://api.cronofy.com/v1/events',
+                      body=json.dumps(DUMMY_EVENTS_PAGE_1), status=200,
+                      content_type='application/json')
+        responses.add(responses.GET, 'https://api.cronofy.com/v1/events/pages/08a07b034306679e',
+              body=json.dumps(DUMMY_EVENTS_PAGE_2), status=200,
+              content_type='application/json')
+
+
+        events = Event.all(access_token="DUMMY").get_all_pages()
+
+        print events
+
+        self.assertEqual(4, len(events))
+
+    @responses.activate
     def test_token_acquire(self):
         responses.add(responses.POST, 'https://api.cronofy.com/oauth/token',
                       body=json.dumps(DUMMY_OATH_TOKEN), status=200,
                       content_type='application/json')
 
-        token =  cronofy.Token.acquire(code="DUMMY_CODE", original_redirect_uri="http://DUMMY_REDIRECT")
+        token = cronofy.Token.acquire(code="DUMMY_CODE", original_redirect_uri="http://DUMMY_REDIRECT")
 
         self.assertEqual(token.access_token, "P531x88i05Ld2yXHIQ7WjiEyqlmOHsgI")
+
+
+if __name__ == '__main__':
+    main()
