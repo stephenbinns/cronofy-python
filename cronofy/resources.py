@@ -317,7 +317,7 @@ class CronofyError(Exception):
         self.json_body = json_body
 
     def __str__(self):
+        return repr(self)
+
+    def __repr__(self):
         return "%s %s %s" % (super(CronofyError, self).__str__(), self.http_status, self.http_body)
-
-
-
