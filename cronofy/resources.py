@@ -303,8 +303,6 @@ class CronofyError(Exception):
 
     def __init__(self, message=None, http_body=None, http_status=None,
                  json_body=None):
-        super(CronofyError, self).__init__(message)
-
         if http_body and hasattr(http_body, 'decode'):
             try:
                 http_body = http_body.decode('utf-8')
@@ -315,6 +313,7 @@ class CronofyError(Exception):
 
         self.http_status = http_status
         self.json_body = json_body
+        super(CronofyError, self).__init__(message, http_body, http_status, json_body)
 
     def __str__(self):
         return repr(self)
