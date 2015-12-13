@@ -28,6 +28,19 @@ DUMMY_CALENDARS = json.loads(
     '"calendar_deleted":false}]}')
 
 
+DUMMY_CREATED_CALENDAR = {
+  "calendar": {
+    "provider_name": "google",
+    "profile_id": "pro_n23kjnwrw2",
+    "profile_name": "example@cronofy.com",
+    "calendar_id": "cal_n23kjnwrw2_sakdnawerd3",
+    "calendar_name": "New Calendar",
+    "calendar_readonly": False,
+    "calendar_deleted": False
+  }
+}
+
+
 DUMMY_PROFILES = {
     "profiles": [
         {
@@ -107,9 +120,25 @@ class ResourceTest(TestCase):
                       body=json.dumps(DUMMY_CALENDARS), status=200,
                       content_type='application/json')
 
-        calendars = Calendar.all(access_token="DUMMY",params=None)
+        calendars = Calendar.all(access_token="DUMMY", params=None)
 
         self.assertEqual(3, len(calendars))
+
+
+    @responses.activate
+    def test_calendars_create(self):
+        responses.add(responses.POST, 'https://api.cronofy.com/v1/calendars',
+                      body=json.dumps(DUMMY_CREATED_CALENDAR), status=200,
+                      content_type='application/json')
+
+        params = {"profile_id": "pro_n23kjnwrw2", "name": "New Calendar"}
+
+        calendar = Calendar.create(access_token="DUMMY",
+                                    params=params)
+
+        self.assertEqual(calendar.calendar_name, params['name'])
+        self.assertEqual(calendar.profile_id, params['profile_id'])
+
 
     @responses.activate
     def test_events_all(self):

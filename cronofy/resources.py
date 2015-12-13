@@ -183,6 +183,35 @@ class Token(OauthAPIResource):
         return cls._post_request(post_data)
 
 
+class CreateAPIResourceMixin(APIResource):
+
+    @classmethod
+    def create(cls, access_token, params):
+        """
+        Create an object
+        :param access_token:
+        :param params:
+        :return:
+        """
+
+        response = requests.post("%s%s" % (cronofy.api_base, cls.class_url(),),
+                                data=params,
+                                headers={'content-type': 'application/json',
+                                         'authorization': 'Bearer %s' % access_token})
+        if response.status_code == requests.codes.ok:
+
+            response_json = response.json()
+            item = response_json[cls.class_name()]
+
+            result = convert_to_cronofy_object(item, cls.class_name().lower())
+
+            return result
+
+        else:
+            #TODO: wrap HTTP errors and throw our own
+            raise CronofyError("Something is wrong", response.text, response.status_code)
+
+
 class ListableAPIResource(APIResource):
 
     @classmethod
@@ -280,7 +309,7 @@ class CronofyResultSet(list):
 
 
 # API objects
-class Calendar(ListableAPIResource):
+class Calendar(ListableAPIResource, CreateAPIResourceMixin):
     pass
 
 class Profile(ListableAPIResource):
