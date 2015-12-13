@@ -195,7 +195,7 @@ class CreateAPIResourceMixin(APIResource):
         """
 
         response = requests.post("%s%s" % (cronofy.api_base, cls.class_url(),),
-                                data=params,
+                                json=params,
                                 headers={'content-type': 'application/json',
                                          'authorization': 'Bearer %s' % access_token})
         if response.status_code == requests.codes.ok:
@@ -231,7 +231,7 @@ class CreateSubEventAPIResourceMixin(APIResource):
         object_id = object_id.strip('/')
 
         response = requests.post("{}{}/{}/events".format(cronofy.api_base, cls.class_url(), object_id),
-                                data=params,
+                                json=params,
                                 headers={'content-type': 'application/json',
                                          'authorization': 'Bearer %s' % access_token})
 
