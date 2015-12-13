@@ -1,6 +1,6 @@
 import json
 from unittest import TestCase, main
-from cronofy import Calendar, Event
+from cronofy import Calendar, Event, Profile
 import cronofy
 import responses
 
@@ -26,6 +26,25 @@ DUMMY_CALENDARS = json.loads(
     '"calendar_name":"Calendar 3",'
     '"calendar_readonly":false,'
     '"calendar_deleted":false}]}')
+
+
+DUMMY_PROFILES = {
+    "profiles": [
+        {
+          "provider_name": "google",
+          "profile_id": "pro_n23kjnwrw2",
+          "profile_name": "example@cronofy.com",
+          "profile_connected": True
+        },
+        {
+          "provider_name": "apple",
+          "profile_id": "pro_n23kjnwrw2",
+          "profile_name": "example@cronofy.com",
+          "profile_connected": False,
+          "profile_relink_url": "http://to.cronofy.com/RaNggYu"
+        }
+    ]
+}
 
 DUMMY_EVENTS_PAGE_1 = json.loads(
                           '{"pages":'
@@ -128,6 +147,15 @@ class ResourceTest(TestCase):
 
         self.assertEqual(token.access_token, "P531x88i05Ld2yXHIQ7WjiEyqlmOHsgI")
 
+    @responses.activate
+    def test_profiles_all(self):
+        responses.add(responses.GET, 'https://api.cronofy.com/v1/profiles',
+                      body=json.dumps(DUMMY_PROFILES), status=200,
+                      content_type='application/json')
+
+        calendars = Profile.all(access_token="DUMMY", params=None)
+
+        self.assertEqual(2, len(calendars))
 
 if __name__ == '__main__':
     main()

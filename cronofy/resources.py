@@ -5,7 +5,8 @@ import cronofy
 import requests
 
 
-PYTHON_CLASS_NAME_TO_API_NAME = {'Calendar': 'calendar', 'Event': 'event', 'Token': 'token', 'FreeBusy': 'free_busy'}
+PYTHON_CLASS_NAME_TO_API_NAME = {
+    'Calendar': 'calendar', 'Event': 'event', 'Token': 'token', 'FreeBusy': 'free_busy', 'Profile': 'profile'}
 
 def convert_to_cronofy_object(resp, type):
     types = {'calendar': Calendar, 'event': Event, 'token': Token, 'free_busy': FreeBusy}
@@ -282,6 +283,8 @@ class CronofyResultSet(list):
 class Calendar(ListableAPIResource):
     pass
 
+class Profile(ListableAPIResource):
+    pass
 
 class FreeBusy(ListableAPIResource):
     pass
