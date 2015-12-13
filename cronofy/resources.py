@@ -212,6 +212,38 @@ class CreateAPIResourceMixin(APIResource):
             raise CronofyError("Something is wrong", response.text, response.status_code)
 
 
+class CreateSubEventAPIResourceMixin(APIResource):
+    """
+    Happy to admit that this is rather a specific mixin. But I'd rather keep the structure.
+    """
+
+    @classmethod
+    def create_or_update_event(cls, object_id, access_token, params):
+        """
+        Create an event for this object (almost certainly a calendar)
+
+        :param object_id:
+        :param access_token:
+        :param params:
+        :return:
+        """
+
+        object_id = object_id.strip('/')
+
+        response = requests.post("{}{}/{}/events".format(cronofy.api_base, cls.class_url(), object_id),
+                                data=params,
+                                headers={'content-type': 'application/json',
+                                         'authorization': 'Bearer %s' % access_token})
+
+        if response.status_code in [requests.codes.ok, requests.codes.created, requests.codes.accepted]:
+
+            return
+
+        else:
+            #TODO: wrap HTTP errors and throw our own
+            raise CronofyError("Something is wrong", response.text, response.status_code)
+
+
 class ListableAPIResource(APIResource):
 
     @classmethod
@@ -309,7 +341,7 @@ class CronofyResultSet(list):
 
 
 # API objects
-class Calendar(ListableAPIResource, CreateAPIResourceMixin):
+class Calendar(ListableAPIResource, CreateAPIResourceMixin, CreateSubEventAPIResourceMixin):
     pass
 
 class Profile(ListableAPIResource):
