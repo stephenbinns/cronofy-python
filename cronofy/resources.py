@@ -5,7 +5,8 @@ import cronofy
 import requests
 
 
-PYTHON_CLASS_NAME_TO_API_NAME = {'Calendar': 'calendar', 'Event': 'event', 'Token': 'token', 'FreeBusy': 'free_busy'}
+PYTHON_CLASS_NAME_TO_API_NAME = {
+    'Calendar': 'calendar', 'Event': 'event', 'Token': 'token', 'FreeBusy': 'free_busy', 'Profile': 'profile'}
 
 def convert_to_cronofy_object(resp, type):
     types = {'calendar': Calendar, 'event': Event, 'token': Token, 'free_busy': FreeBusy}
@@ -182,6 +183,67 @@ class Token(OauthAPIResource):
         return cls._post_request(post_data)
 
 
+class CreateAPIResourceMixin(APIResource):
+
+    @classmethod
+    def create(cls, access_token, params):
+        """
+        Create an object
+        :param access_token:
+        :param params:
+        :return:
+        """
+
+        response = requests.post("%s%s" % (cronofy.api_base, cls.class_url(),),
+                                json=params,
+                                headers={'content-type': 'application/json',
+                                         'authorization': 'Bearer %s' % access_token})
+        if response.status_code == requests.codes.ok:
+
+            response_json = response.json()
+            item = response_json[cls.class_name()]
+
+            result = convert_to_cronofy_object(item, cls.class_name().lower())
+
+            return result
+
+        else:
+            #TODO: wrap HTTP errors and throw our own
+            raise CronofyError("Something is wrong", response.text, response.status_code)
+
+
+class CreateSubEventAPIResourceMixin(APIResource):
+    """
+    Happy to admit that this is rather a specific mixin. But I'd rather keep the structure.
+    """
+
+    @classmethod
+    def create_or_update_event(cls, object_id, access_token, params):
+        """
+        Create an event for this object (almost certainly a calendar)
+
+        :param object_id:
+        :param access_token:
+        :param params:
+        :return:
+        """
+
+        object_id = object_id.strip('/')
+
+        response = requests.post("{}{}/{}/events".format(cronofy.api_base, cls.class_url(), object_id),
+                                json=params,
+                                headers={'content-type': 'application/json',
+                                         'authorization': 'Bearer %s' % access_token})
+
+        if response.status_code in [requests.codes.ok, requests.codes.created, requests.codes.accepted]:
+
+            return
+
+        else:
+            #TODO: wrap HTTP errors and throw our own
+            raise CronofyError("Something is wrong", response.text, response.status_code)
+
+
 class ListableAPIResource(APIResource):
 
     @classmethod
@@ -279,9 +341,11 @@ class CronofyResultSet(list):
 
 
 # API objects
-class Calendar(ListableAPIResource):
+class Calendar(ListableAPIResource, CreateAPIResourceMixin, CreateSubEventAPIResourceMixin):
     pass
 
+class Profile(ListableAPIResource):
+    pass
 
 class FreeBusy(ListableAPIResource):
     pass

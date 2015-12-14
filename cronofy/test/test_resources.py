@@ -1,6 +1,6 @@
 import json
 from unittest import TestCase, main
-from cronofy import Calendar, Event
+from cronofy import Calendar, Event, Profile
 import cronofy
 import responses
 
@@ -26,6 +26,40 @@ DUMMY_CALENDARS = json.loads(
     '"calendar_name":"Calendar 3",'
     '"calendar_readonly":false,'
     '"calendar_deleted":false}]}')
+
+
+DUMMY_CREATED_CALENDAR = {
+  "calendar": {
+    "provider_name": "google",
+    "profile_id": "pro_n23kjnwrw2",
+    "profile_name": "example@cronofy.com",
+    "calendar_id": "cal_n23kjnwrw2_sakdnawerd3",
+    "calendar_name": "New Calendar",
+    "calendar_readonly": False,
+    "calendar_deleted": False
+  }
+}
+
+
+DUMMY_PROFILES = {
+    "profiles": [
+        {
+          "provider_name": "google",
+          "profile_id": "pro_n23kjnwrw2",
+          "profile_name": "example@cronofy.com",
+          "profile_connected": True
+        },
+        {
+          "provider_name": "apple",
+          "profile_id": "pro_n23kjnwrw2",
+          "profile_name": "example@cronofy.com",
+          "profile_connected": False,
+          "profile_relink_url": "http://to.cronofy.com/RaNggYu"
+        }
+    ]
+}
+
+DUMMY_EVENT_CREATE = None
 
 DUMMY_EVENTS_PAGE_1 = json.loads(
                           '{"pages":'
@@ -88,9 +122,39 @@ class ResourceTest(TestCase):
                       body=json.dumps(DUMMY_CALENDARS), status=200,
                       content_type='application/json')
 
-        calendars = Calendar.all(access_token="DUMMY",params=None)
+        calendars = Calendar.all(access_token="DUMMY", params=None)
 
         self.assertEqual(3, len(calendars))
+
+    @responses.activate
+    def test_calendars_create(self):
+        responses.add(responses.POST, 'https://api.cronofy.com/v1/calendars',
+                      body=json.dumps(DUMMY_CREATED_CALENDAR), status=200,
+                      content_type='application/json')
+
+        params = {"profile_id": "pro_n23kjnwrw2", "name": "New Calendar"}
+
+        calendar = Calendar.create(access_token="DUMMY",
+                                    params=params)
+
+        self.assertEqual(calendar.calendar_name, params['name'])
+        self.assertEqual(calendar.profile_id, params['profile_id'])
+
+    @responses.activate
+    def test_calendars_create_or_update_event(self):
+
+        calendar_id = "cal_n23kjnwrw2_sakdnawerd3"
+
+        responses.add(responses.POST, 'https://api.cronofy.com/v1/calendars/{}/events'.format(calendar_id),
+                      body=json.dumps(DUMMY_EVENT_CREATE), status=202,
+                      content_type='application/json')
+
+        params = {"blah": "blah"}
+
+        try:
+            Calendar.create_or_update_event(object_id=calendar_id, access_token="DUMMY", params=params)
+        except cronofy.CronofyError as e:
+            self.fail("request raised exception: {}".format(e))
 
     @responses.activate
     def test_events_all(self):
@@ -111,7 +175,6 @@ class ResourceTest(TestCase):
               body=json.dumps(DUMMY_EVENTS_PAGE_2), status=200,
               content_type='application/json')
 
-
         events = Event.all(access_token="DUMMY").get_all_pages()
 
         print events
@@ -128,6 +191,15 @@ class ResourceTest(TestCase):
 
         self.assertEqual(token.access_token, "P531x88i05Ld2yXHIQ7WjiEyqlmOHsgI")
 
+    @responses.activate
+    def test_profiles_all(self):
+        responses.add(responses.GET, 'https://api.cronofy.com/v1/profiles',
+                      body=json.dumps(DUMMY_PROFILES), status=200,
+                      content_type='application/json')
+
+        calendars = Profile.all(access_token="DUMMY", params=None)
+
+        self.assertEqual(2, len(calendars))
 
 if __name__ == '__main__':
     main()
