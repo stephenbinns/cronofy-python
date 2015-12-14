@@ -61,6 +61,8 @@ DUMMY_PROFILES = {
 
 DUMMY_EVENT_CREATE = None
 
+DUMMY_EVENT_DELETE = None
+
 DUMMY_EVENTS_PAGE_1 = json.loads(
                           '{"pages":'
                           '{"current":1,"total":2,"next_page":"https://api.cronofy.com/v1/events/pages/08a07b034306679e"},'
@@ -153,6 +155,22 @@ class ResourceTest(TestCase):
 
         try:
             Calendar.create_or_update_event(object_id=calendar_id, access_token="DUMMY", params=params)
+        except cronofy.CronofyError as e:
+            self.fail("request raised exception: {}".format(e))
+
+    @responses.activate
+    def test_calendars_delete_event(self):
+
+        calendar_id = "cal_n23kjnwrw2_sakdnawerd3"
+
+        responses.add(responses.DELETE, 'https://api.cronofy.com/v1/calendars/{}/events'.format(calendar_id),
+                      body=json.dumps(DUMMY_EVENT_DELETE), status=202,
+                      content_type='application/json')
+
+        params = {"blah": "blah"}
+
+        try:
+            Calendar.delete_event(object_id=calendar_id, access_token="DUMMY", params=params)
         except cronofy.CronofyError as e:
             self.fail("request raised exception: {}".format(e))
 
