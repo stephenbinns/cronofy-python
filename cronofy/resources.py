@@ -281,6 +281,8 @@ class ListableAPIResource(APIResource):
                     result.next_page_url = pages["next_page"]
                     result.access_token = access_token
                     result.object_class = cls.class_name()
+                    result.class_url = cls.class_url()
+                    result.class_name_for_url = cls.class_name_for_url()
                     result.total_pages = pages['total']
 
             return result
@@ -294,6 +296,8 @@ class CronofyResultSet(list):
     access_token = None
     object_class = None
     total_pages = None
+    class_url = None
+    class_name_for_url = None
 
     def next_page(self):
         if not self.next_page_url:
@@ -304,7 +308,7 @@ class CronofyResultSet(list):
 
         if response.status_code == requests.codes.ok:
             response_json = response.json()
-            items = response_json["%ss" % self.object_class.lower()]
+            items = response_json[self.class_name_for_url]
             
             result = CronofyResultSet(convert_to_cronofy_object(items, self.object_class.lower()))
             
@@ -315,6 +319,8 @@ class CronofyResultSet(list):
                     result.next_page_url = pages["next_page"]
                     result.access_token = self.access_token
                     result.object_class = self.object_class
+                    result.class_name_for_url = self.class_name_for_url
+                    result.class_url = self.class_url
 
             return result
         else:
