@@ -242,7 +242,7 @@ class CronofyResultSet(list):
 
         if response.status_code == requests.codes.ok:
             response_json = response.json()
-            items = response_json["%ss" % self.object_class.lower()]
+            items = response_json[self.class_name_for_url()]
             
             result = CronofyResultSet(convert_to_cronofy_object(items, self.object_class.lower()))
             
