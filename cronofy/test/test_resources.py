@@ -1,6 +1,6 @@
 import json
 from unittest import TestCase, main
-from cronofy import Calendar, Event, Profile
+from cronofy import Calendar, Channel, Event, Profile
 import cronofy
 import responses
 
@@ -107,6 +107,20 @@ DUMMY_EVENTS_PAGE_2 = json.loads(
                           '"deleted":false,'
                           '"location":{"description":"Pizzeria"}}]}')
 
+DUMMY_CHANNEL_CREATE = json.loads(
+                          '{"channel":'
+                          '{"channel_id": "chn_54cf7c7cb4ad4c1027000001",'
+                          '"callback_url": "https://example.com/api",'
+                          '"filters": {}}}')
+
+DUMMY_CHANNEL_DELETE = None
+
+DUMMY_CHANNELS = json.loads(
+                          '{"channels":'
+                          '[{"channel_id": "chn_54cf7c7cb4ad4c1027000001",'
+                          '"callback_url": "https://example.com/api",'
+                          '"filters": {}}]}')
+
 DUMMY_OATH_TOKEN = json.loads(
     '{"token_type":"bearer",'
     '"access_token":"P531x88i05Ld2yXHIQ7WjiEyqlmOHsgI",'
@@ -171,6 +185,42 @@ class ResourceTest(TestCase):
 
         try:
             Calendar.delete_event(object_id=calendar_id, access_token="DUMMY", params=params)
+        except cronofy.CronofyError as e:
+            self.fail("request raised exception: {}".format(e))
+
+    @responses.activate
+    def test_channels_all(self):
+      responses.add(responses.GET, 'https://api.cronofy.com/v1/channels',
+                    body=json.dumps(DUMMY_CHANNELS), status=200,
+                    content_type='application/json')
+
+      channels = Channel.all(access_token="DUMMY")
+
+      self.assertEqual(1, len(channels))
+
+    @responses.activate
+    def test_channels_create(self):
+        responses.add(responses.POST, 'https://api.cronofy.com/v1/channels',
+                      body=json.dumps(DUMMY_CHANNEL_CREATE), status=200,
+                      content_type='application/json')
+
+        params = {"callback_url": "https://example.com/api"}
+
+        try:
+            Channel.create(access_token="DUMMY", params=params)
+        except cronofy.CronofyError as e:
+            self.fail("request raised exception: {}".format(e))
+
+    @responses.activate
+    def test_channels_delete(self):
+        channel_id = 'chn_54cf7c7cb4ad4c1027000001'
+
+        responses.add(responses.DELETE, 'https://api.cronofy.com/v1/channels/{}'.format(channel_id),
+                      body=json.dumps(DUMMY_CHANNEL_DELETE), status=202,
+                      content_type='application/json')
+
+        try:
+            Channel.delete(object_id=channel_id, access_token="DUMMY")
         except cronofy.CronofyError as e:
             self.fail("request raised exception: {}".format(e))
 

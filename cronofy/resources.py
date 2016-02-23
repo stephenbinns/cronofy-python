@@ -290,13 +290,7 @@ class DeleteAPIResourceMixin(APIResource):
                                 headers={'content-type': 'application/json',
                                          'authorization': 'Bearer %s' % access_token})
         if response.status_code in [requests.codes.ok, requests.codes.created, requests.codes.accepted]:
-
-            response_json = response.json()
-            item = response_json[cls.class_name()]
-
-            result = convert_to_cronofy_object(item, cls.class_name().lower())
-
-            return result
+            return
 
         else:
             #TODO: wrap HTTP errors and throw our own
