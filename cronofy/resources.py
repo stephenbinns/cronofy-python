@@ -273,6 +273,36 @@ class CreateSubEventAPIResourceMixin(APIResource):
             raise CronofyError("Something is wrong", response.text, response.status_code)
 
 
+class DeleteAPIResourceMixin(APIResource):
+
+    @classmethod
+    def delete(cls, object_id, access_token):
+        """
+        Delete this object
+
+        :param object_id:
+        :param access_token:
+        :return:
+        """
+        object_id = object_id.strip('/')
+
+        response = requests.delete("{}{}/{}".format(cronofy.api_base, cls.class_url(), object_id),
+                                headers={'content-type': 'application/json',
+                                         'authorization': 'Bearer %s' % access_token})
+        if response.status_code in [requests.codes.ok, requests.codes.created, requests.codes.accepted]:
+
+            response_json = response.json()
+            item = response_json[cls.class_name()]
+
+            result = convert_to_cronofy_object(item, cls.class_name().lower())
+
+            return result
+
+        else:
+            #TODO: wrap HTTP errors and throw our own
+            raise CronofyError("Something is wrong", response.text, response.status_code)
+
+
 class ListableAPIResource(APIResource):
 
     @classmethod
@@ -397,7 +427,7 @@ class Event(ListableAPIResource):
 
         return super(Event, cls).all(access_token, params)
 
-class Channel(ListableAPIResource, CreateAPIResourceMixin):
+class Channel(ListableAPIResource, CreateAPIResourceMixin, DeleteAPIResourceMixin):
     @classmethod
     def all(cls, access_token, params=None):
         if params is None:
