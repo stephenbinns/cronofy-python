@@ -6,7 +6,7 @@ import requests
 
 
 PYTHON_CLASS_NAME_TO_API_NAME = {
-    'Calendar': 'calendar', 'Event': 'event', 'Token': 'token', 'FreeBusy': 'free_busy', 'Profile': 'profile'}
+    'Calendar': 'calendar', 'Event': 'event', 'Token': 'token', 'FreeBusy': 'free_busy', 'Profile': 'profile', 'Channel': 'channel'}
 
 def convert_to_cronofy_object(resp, type):
     types = {'calendar': Calendar, 'event': Event, 'token': Token, 'free_busy': FreeBusy}
@@ -397,6 +397,13 @@ class Event(ListableAPIResource):
 
         return super(Event, cls).all(access_token, params)
 
+class Channel(ListableAPIResource, CreateAPIResourceMixin):
+    @classmethod
+    def all(cls, access_token, params=None):
+        if params is None:
+            params = {}
+
+        return super(Channel, cls).all(access_token, params)
 
 # Exceptions
 class CronofyError(Exception):
