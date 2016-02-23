@@ -5,8 +5,11 @@ import cronofy
 import requests
 
 
+PYTHON_CLASS_NAME_TO_API_NAME = {
+    'Calendar': 'calendar', 'Event': 'event', 'Token': 'token', 'FreeBusy': 'free_busy', 'Profile': 'profile'}
+
 def convert_to_cronofy_object(resp, type):
-    types = {'calendar': Calendar, 'event' : Event, 'token': Token}
+    types = {'calendar': Calendar, 'event': Event, 'token': Token, 'free_busy': FreeBusy}
 
     if isinstance(resp, list):
         return [convert_to_cronofy_object(i,type) for i in resp]
@@ -116,7 +119,16 @@ class APIResource(CronofyObject):
             raise NotImplementedError(
                 'APIResource is an abstract class.  You should perform '
                 'actions on its subclasses')
-        return str(urllib.quote_plus(cls.__name__.lower()))
+        try:
+            return str(urllib.quote_plus(PYTHON_CLASS_NAME_TO_API_NAME[cls.__name__]))
+        except KeyError:
+            raise RuntimeError("We are not expecting a class called cls.__name__. "
+                               "Maybe add it to PYTHON_CLASS_NAME_TO_API_NAME?")
+
+    @classmethod
+    def class_name_for_url(cls):
+        cls_name = cls.class_name()
+        return "%ss" % cls_name.lower()
 
 class Account(APIResource):
 
@@ -171,25 +183,124 @@ class Token(OauthAPIResource):
         return cls._post_request(post_data)
 
 
+class DeleteSubEventAPIResourceMixin(APIResource):
+
+    @classmethod
+    def delete_event(cls, object_id, access_token, params):
+        """
+        Delete an event for this object (almost certainly a calendar)
+
+        :param object_id:
+        :param access_token:
+        :param params:
+        :return:
+        """
+
+        object_id = object_id.strip('/')
+
+        response = requests.delete("{}{}/{}/events".format(cronofy.api_base, cls.class_url(), object_id),
+                                json=params,
+                                headers={'content-type': 'application/json',
+                                         'authorization': 'Bearer %s' % access_token})
+
+        if response.status_code in [requests.codes.ok, requests.codes.created, requests.codes.accepted]:
+
+            return
+
+        else:
+            #TODO: wrap HTTP errors and throw our own
+            raise CronofyError("Something is wrong", response.text, response.status_code)
+
+
+class CreateAPIResourceMixin(APIResource):
+
+    @classmethod
+    def create(cls, access_token, params):
+        """
+        Create an object
+        :param access_token:
+        :param params:
+        :return:
+        """
+
+        response = requests.post("%s%s" % (cronofy.api_base, cls.class_url(),),
+                                json=params,
+                                headers={'content-type': 'application/json',
+                                         'authorization': 'Bearer %s' % access_token})
+        if response.status_code == requests.codes.ok:
+
+            response_json = response.json()
+            item = response_json[cls.class_name()]
+
+            result = convert_to_cronofy_object(item, cls.class_name().lower())
+
+            return result
+
+        else:
+            #TODO: wrap HTTP errors and throw our own
+            raise CronofyError("Something is wrong", response.text, response.status_code)
+
+
+class CreateSubEventAPIResourceMixin(APIResource):
+    """
+    Happy to admit that this is rather a specific mixin. But I'd rather keep the structure.
+    """
+
+    @classmethod
+    def create_or_update_event(cls, object_id, access_token, params):
+        """
+        Create an event for this object (almost certainly a calendar)
+
+        :param object_id:
+        :param access_token:
+        :param params:
+        :return:
+        """
+
+        object_id = object_id.strip('/')
+
+        response = requests.post("{}{}/{}/events".format(cronofy.api_base, cls.class_url(), object_id),
+                                json=params,
+                                headers={'content-type': 'application/json',
+                                         'authorization': 'Bearer %s' % access_token})
+
+        if response.status_code in [requests.codes.ok, requests.codes.created, requests.codes.accepted]:
+
+            return
+
+        else:
+            #TODO: wrap HTTP errors and throw our own
+            raise CronofyError("Something is wrong", response.text, response.status_code)
+
+
 class ListableAPIResource(APIResource):
 
     @classmethod
     def class_url(cls):
         cls_name = cls.class_name()
+        if cls_name == "free_busy":
+            return "/v1/free_busy"
         return "/v1/%ss" % (cls_name,)
 
     @classmethod
+    def class_name_for_url(cls):
+        cls_name = cls.class_name()
+        if cls_name == "free_busy":
+            return "free_busy"
+        return "%ss" % cls_name.lower()
+
+    @classmethod
     def all(cls, access_token, params):
+
         response = requests.get("%s%s" % (cronofy.api_base, cls.class_url(),),
                                 params=params,
                                 headers={'content-type': 'application/json', 'authorization': 'Bearer %s' % access_token})
 
         if response.status_code == requests.codes.ok:
-            response_json = response.json()
-            items = response_json["%ss" % cls.class_name().lower()]
 
-            #TODO: add the following of pagination?
-            #return convert_to_cronofy_object(items, cls.class_name().lower())
+            response_json = response.json()
+            items = response_json[cls.class_name_for_url()]
+
             result = CronofyResultSet(convert_to_cronofy_object(items, cls.class_name().lower()))
             
             if "pages" in response_json:
@@ -199,6 +310,9 @@ class ListableAPIResource(APIResource):
                     result.next_page_url = pages["next_page"]
                     result.access_token = access_token
                     result.object_class = cls.class_name()
+                    result.class_url = cls.class_url()
+                    result.class_name_for_url = cls.class_name_for_url()
+                    result.total_pages = pages['total']
 
             return result
         else:
@@ -210,6 +324,9 @@ class CronofyResultSet(list):
     next_page_url = None
     access_token = None
     object_class = None
+    total_pages = None
+    class_url = None
+    class_name_for_url = None
 
     def next_page(self):
         if not self.next_page_url:
@@ -220,7 +337,7 @@ class CronofyResultSet(list):
 
         if response.status_code == requests.codes.ok:
             response_json = response.json()
-            items = response_json["%ss" % self.object_class.lower()]
+            items = response_json[self.class_name_for_url]
             
             result = CronofyResultSet(convert_to_cronofy_object(items, self.object_class.lower()))
             
@@ -231,17 +348,43 @@ class CronofyResultSet(list):
                     result.next_page_url = pages["next_page"]
                     result.access_token = self.access_token
                     result.object_class = self.object_class
+                    result.class_name_for_url = self.class_name_for_url
+                    result.class_url = self.class_url
 
             return result
         else:
             #TODO: wrap HTTP errors and throw our own
             raise CronofyError("Something is wrong", response.text, response.status_code)
 
+    def get_all_pages(self, max_pages=20):
+
+        if self.total_pages is None or self.total_pages == 1:
+            return self
+
+        next_result = self
+        results = []
+
+        for i in range(min(self.total_pages - 1, max_pages)):
+
+            next_result = next_result.next_page()
+            if next_result is None:
+                raise Exception
+            results = results + next_result
+
+        self.next_page_url = None
+        return self + results
+
 
 # API objects
-class Calendar(ListableAPIResource):
+class Calendar(ListableAPIResource, CreateAPIResourceMixin, CreateSubEventAPIResourceMixin,
+               DeleteSubEventAPIResourceMixin):
     pass
 
+class Profile(ListableAPIResource):
+    pass
+
+class FreeBusy(ListableAPIResource):
+    pass
 
 class Event(ListableAPIResource):
     @classmethod
@@ -260,8 +403,6 @@ class CronofyError(Exception):
 
     def __init__(self, message=None, http_body=None, http_status=None,
                  json_body=None):
-        super(CronofyError, self).__init__(message)
-
         if http_body and hasattr(http_body, 'decode'):
             try:
                 http_body = http_body.decode('utf-8')
@@ -272,9 +413,10 @@ class CronofyError(Exception):
 
         self.http_status = http_status
         self.json_body = json_body
+        super(CronofyError, self).__init__(message, http_body, http_status, json_body)
 
     def __str__(self):
+        return repr(self)
+
+    def __repr__(self):
         return "%s %s %s" % (super(CronofyError, self).__str__(), self.http_status, self.http_body)
-
-
-

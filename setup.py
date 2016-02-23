@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='cronofy',
-    version='0.0.2',
+    version='0.0.3',
     author='Nik Brbora',
     author_email='nik@saberr.com',
     packages=['cronofy', 'cronofy.test'],
