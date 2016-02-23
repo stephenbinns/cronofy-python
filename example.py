@@ -1,6 +1,3 @@
-__author__ = 'nik'
-
-
 import cronofy
 
 cronofy.client_id = ""
