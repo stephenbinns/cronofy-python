@@ -6,7 +6,7 @@ import requests
 
 
 PYTHON_CLASS_NAME_TO_API_NAME = {
-    'Calendar': 'calendar', 'Event': 'event', 'Token': 'token', 'FreeBusy': 'free_busy', 'Profile': 'profile', 'Channel': 'channel'}
+    'Account': 'account', 'Calendar': 'calendar', 'Event': 'event', 'Token': 'token', 'FreeBusy': 'free_busy', 'Profile': 'profile', 'Channel': 'channel'}
 
 def convert_to_cronofy_object(resp, type):
     types = {'calendar': Calendar, 'event': Event, 'token': Token, 'free_busy': FreeBusy}
