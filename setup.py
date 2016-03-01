@@ -1,8 +1,9 @@
 from distutils.core import setup
+from cronofy import __version__
 
 setup(
     name='cronofy',
-    version='0.0.5',
+    version= __version__,
     author='Derek Edwards',
     author_email='derek.edwards@coachlogix.com',
     packages=['cronofy', 'cronofy.test'],

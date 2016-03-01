@@ -1,3 +1,4 @@
+__version__ = '0.0.5'
 client_id = None
 client_secret = None
 api_base = 'https://api.cronofy.com'
