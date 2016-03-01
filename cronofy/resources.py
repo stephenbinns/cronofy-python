@@ -24,6 +24,11 @@ def convert_to_cronofy_object(resp, type):
     else:
         return resp
 
+def set_default_headers(headers = {}):
+    merged = headers.copy()
+    merged.update({'user-agent': 'Cronofy Python %s' % ( cronofy.__version__ ), 'content-type': 'application/json'})
+    return merged
+
 class CronofyObject(dict):
     def __init__(self, client_id=None, client_secret=None, **params):
         super(CronofyObject, self).__init__()
@@ -135,7 +140,7 @@ class Account(APIResource):
     @classmethod
     def fetch(cls, access_token):
         response = requests.get("%s/v1/%s" % (cronofy.api_base, cls.class_name(),),
-                                headers={'content-type': 'application/json', 'authorization': 'Bearer %s' % access_token})
+                                headers=set_default_headers({'authorization': 'Bearer %s' % access_token}))
 
         if response.status_code == requests.codes.ok:
             items = response.json()["%s" % cls.class_name().lower()]
@@ -164,7 +169,7 @@ class Token(OauthAPIResource):
 
         response = requests.post("%s%s" % (cronofy.api_base, cls.class_url(),),
                                  data=json.dumps(post_data),
-                                 headers={'content-type': 'application/json'})
+                                 headers=set_default_headers())
         if response.status_code == requests.codes.ok:
             item = response.json()
             return convert_to_cronofy_object(item, cls.class_name().lower())
@@ -200,8 +205,7 @@ class DeleteSubEventAPIResourceMixin(APIResource):
 
         response = requests.delete("{}{}/{}/events".format(cronofy.api_base, cls.class_url(), object_id),
                                 json=params,
-                                headers={'content-type': 'application/json',
-                                         'authorization': 'Bearer %s' % access_token})
+                                headers=set_default_headers({'authorization': 'Bearer %s' % access_token}))
 
         if response.status_code in [requests.codes.ok, requests.codes.created, requests.codes.accepted]:
 
@@ -225,8 +229,7 @@ class CreateAPIResourceMixin(APIResource):
 
         response = requests.post("%s%s" % (cronofy.api_base, cls.class_url(),),
                                 json=params,
-                                headers={'content-type': 'application/json',
-                                         'authorization': 'Bearer %s' % access_token})
+                                headers=set_default_headers({'authorization': 'Bearer %s' % access_token}))
         if response.status_code == requests.codes.ok:
 
             response_json = response.json()
@@ -261,8 +264,7 @@ class CreateSubEventAPIResourceMixin(APIResource):
 
         response = requests.post("{}{}/{}/events".format(cronofy.api_base, cls.class_url(), object_id),
                                 json=params,
-                                headers={'content-type': 'application/json',
-                                         'authorization': 'Bearer %s' % access_token})
+                                headers=set_default_headers({'authorization': 'Bearer %s' % access_token}))
 
         if response.status_code in [requests.codes.ok, requests.codes.created, requests.codes.accepted]:
 
@@ -287,8 +289,8 @@ class DeleteAPIResourceMixin(APIResource):
         object_id = object_id.strip('/')
 
         response = requests.delete("{}{}/{}".format(cronofy.api_base, cls.class_url(), object_id),
-                                headers={'content-type': 'application/json',
-                                         'authorization': 'Bearer %s' % access_token})
+                                headers=set_default_headers({'authorization': 'Bearer %s' % access_token}))
+
         if response.status_code in [requests.codes.ok, requests.codes.created, requests.codes.accepted]:
             return
 
@@ -318,7 +320,7 @@ class ListableAPIResource(APIResource):
 
         response = requests.get("%s%s" % (cronofy.api_base, cls.class_url(),),
                                 params=params,
-                                headers={'content-type': 'application/json', 'authorization': 'Bearer %s' % access_token})
+                                headers=set_default_headers({'authorization': 'Bearer %s' % access_token}))
 
         if response.status_code == requests.codes.ok:
 
@@ -357,7 +359,7 @@ class CronofyResultSet(list):
             return None
 
         response = requests.get(self.next_page_url,
-                                headers={'content-type': 'application/json', 'authorization': 'Bearer %s' % self.access_token})
+                                headers=set_default_headers({'authorization': 'Bearer %s' % self.access_token}))
 
         if response.status_code == requests.codes.ok:
             response_json = response.json()
